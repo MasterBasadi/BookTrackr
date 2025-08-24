@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Stock</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.3/css/bootstrap-select.min.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 16px;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            width: 30%;
+            min-width: 250px;
+            font-size: 16px;
+            background-color: #ffffff;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+        }
+        .main-content {
+            margin-left: 30%;
+            padding: 40px;
+        }
+        .book-table th, .book-table td {
+            vertical-align: middle;
+        }
+        .table-danger td {
+            background-color: #ffe5e5 !important;
+        }
+        .search-bar {
+            max-width: 500px;
+        }
+        .modal-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            z-index: 1050;
+            width: 450px;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1040;
+        }
+        .suggestions-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .suggestion-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .suggestion-item:hover, .suggestion-item.selected {
+            background-color: #f8f9fa;
+        }
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        .no-results {
+            padding: 8px 12px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Back to Home Button -->
+<a href="/home" class="btn btn-light position-absolute m-3" style="top: 10px; right: 10px; z-index: 1100;" title="Go to Home">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="bi bi-house-door-fill" viewBox="0 0 16 16">
+        <path d="M6.5 14.5v-4h3v4a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-6h1.293a.5.5 0 0 0 .354-.854l-7-7a.5.5 0 0 0-.708 0l-7 7A.5.5 0 0 0 1.207 8.5H2.5v6a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5z"/>
+    </svg>
+</a>
+
+<!-- Sidebar -->
+<div class="sidebar">
+    <h4 style="font-weight: bold; font-size: 24px;">📚 Stock</h4>
+    <button style="font-size: 18px; background-color: #1c8a2e; color: #ffffff" class="btn w-100 mb-2" onclick="showPopup('addBookPopup')">Add Book</button>
+    <button style="font-size: 18px; background-color: #eb9234; color: #ffffff" class="btn w-100 mb-2" onclick="showPopup('assignBookPopup')">Assign Book</button>
+    <button style="font-size: 18px; background-color: #eb34b7; color: #ffffff" class="btn w-100 mb-4" onclick="showPopup('batchAddPopup')">Batch Add</button>
+    <form th:action="@{/export}" method="get">
+        <button style="font-size: 18px; background-color: #0d6efd; color: #ffffff" class="btn w-100 mb-4" type="submit">📤 Export CSV</button>
+    </form>
+
+
+    <h5 style="font-size: 20px;" class="mt-4">🔍 Search</h5>
+    <input type="text" style="font-size: 18px;" id="searchInput" class="form-control search-bar" placeholder="Type to filter..." onkeyup="filterBooks()" />
+
+    <hr>
+    <h5 style="font-size: 20px;" class="mt-4">📊 Inventory Summary</h5>
+    <ul class="list-group" style="font-size: 18px;">
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            Total
+            <span th:text="${totalBooks}" class="badge bg-secondary rounded-pill"></span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            Assigned
+            <span th:text="${assignedCount}" class="badge bg-success rounded-pill"></span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            Unassigned
+            <span th:text="${unassignedCount}" class="badge bg-primary rounded-pill"></span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            Overdue
+            <span th:text="${overdueCount}" class="badge bg-danger rounded-pill"></span>
+        </li>
+    </ul>
+
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    <h2 style="font-weight: bold; font-size: 20px;" class="mb-4">All Textbooks</h2>
+
+    <table class="table table-hover book-table">
+        <thead class="table-light">
+        <tr>
+            <th>Course</th>
+            <th>Textbook ID</th>
+            <th>Condition</th>
+            <th>Teacher</th>
+            <th>Student</th>
+            <th>Return Date</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody id="bookTableBody">
+        <tr th:each="book : ${books}"
+            th:classappend="${book.returnDate != null and book.returnDate.isBefore(T(java.time.LocalDate).now())} ? 'table-danger'">
+            <td style="text-transform:uppercase" th:text="${book.course}"></td>
+            <td th:text="${book.textbookID}"></td>
+            <td th:text="${book.condition}"></td>
+            <td th:text="${book.teacher}"></td>
+            <td th:text="${book.studentName != null ? book.studentName : 'Unassigned'}"></td>
+            <td th:text="${book.returnDate != null ? book.returnDate : '—'}"></td>
+            <td>
+                <form th:action="@{/removeBookByID}" method="post" onsubmit="return confirm('Are you sure you want to remove this book?');" style="display: inline-block;">
+                    <input type="hidden" name="id" th:value="${book.id}"/>
+                    <button type="submit" class="btn btn-sm btn-danger" style="padding: 6px 10px;">
+                        <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m6 6 12 12m3-6a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                        </svg>
+                    </button>
+                </form>
+                <button type="button" class="btn btn-warning btn-sm" style="font-size: 16px; padding: 6px 10px;"
+                        onclick="openEditPopup(this)"
+                        th:attr="
+                            data-course=${book.course},
+                            data-teacher=${book.teacher},
+                            data-textbookid=${book.textbookID},
+                            data-studentname=${book.studentName},
+                            data-returndate=${book.returnDate}">
+                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m14.304 4.844 2.852 2.852M7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-4.5m2.409-9.91a2.017 2.017 0 0 1 0 2.853l-6.844 6.844L8 14l.713-3.565 6.844-6.844a2.015 2.015 0 0 1 2.852 0Z"/>
+                    </svg>
+                </button>
+                <form th:if="${book.studentName != null and #strings.trim(book.studentName) != ''}" th:action="@{'/returnBook/' + ${book.id}}" method="post" onsubmit="return confirm('Are you sure you want to return this book?');" style="display:inline-block;">
+                    <button type="submit" class="btn btn-success btn-sm" style="padding: 6px 10px;">
+                        <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11.917 9.724 16.5 19 7.5"/>
+                        </svg>
+                    </button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Overlay + Popups -->
+<div id="overlay" class="overlay" style="display: none;" onclick="hideAllPopups()"></div>
+
+<!-- Add Book Popup -->
+<div id="addBookPopup" class="modal-popup" style="display: none;">
+    <h5 style="font-size: 16px;" class="mb-3">Add New Book</h5>
+    <form method="post" th:action="@{/addBook}">
+        <div class="mb-3">
+            <label for="course" class="form-label">Course</label>
+            <select name="course" id="course" class="form-select" required>
+                <option value="" disabled selected>Select a course</option>
+                <option value="mpm2d">MPM2D</option>
+                <option value="mbc3c">MBC3C</option>
+                <option value="mcf3m">MCF3M</option>
+                <option value="mcr3u">MCR3U</option>
+                <option value="map4c">MAP4C</option>
+                <option value="mhf4u">MHF4U</option>
+                <option value="mdm4u">MDM4U</option>
+                <option value="mcv4u">MCV4U</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="condition" class="form-label">Condition</label>
+            <select name="condition" id="condition" class="form-select" required>
+                <option value="" disabled selected>Select condition</option>
+                <option value="New">New</option>
+                <option value="Good">Good</option>
+                <option value="Fair">Fair</option>
+                <option value="Poor">Poor</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="teacher" class="form-label">Teacher's Last Name</label>
+            <input type="text" name="teacher" id="teacher" placeholder="Ex: Doe" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="textbookID" class="form-label">Textbook ID (Only for single input)</label>
+            <input type="text" name="textbookID" id="textbookID" placeholder="Ex: 2025-01" class="form-control" required>
+        </div>
+        <div class="d-flex justify-content-between mt-3">
+            <button type="button" class="btn btn-secondary" onclick="hideAllPopups()">Cancel</button>
+            <button type="submit" class="btn btn-success">Add</button>
+        </div>
+    </form>
+</div>
+
+<!-- Assign Book Popup -->
+<div id="assignBookPopup" class="modal-popup" style="display: none;">
+    <h5 class="mb-3">Assign Book</h5>
+    <form th:action="@{/assignBook}" method="post">
+        <div class="mb-3">
+            <label for="assign-course" class="form-label">Course</label>
+            <select name="course" id="assign-course" class="form-select" required>
+                <option value="" disabled selected>Select a course</option>
+                <option value="mpm2d">MPM2D</option>
+                <option value="mbc3c">MBC3C</option>
+                <option value="mcf3m">MCF3M</option>
+                <option value="mcr3u">MCR3U</option>
+                <option value="map4c">MAP4C</option>
+                <option value="mhf4u">MHF4U</option>
+                <option value="mdm4u">MDM4U</option>
+                <option value="mcv4u">MCV4U</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="assign-teacher" class="form-label">Teacher's Last Name</label>
+            <input type="text" name="teacher" id="assign-teacher" placeholder="Ex: Doe" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="assign-textbookID" class="form-label">Textbook ID</label>
+            <input type="text" id="assign-textbookID" name="textbookID" class="form-control" placeholder="Search Textbook ID..." autocomplete="off" disabled required>
+            <div id="suggestions" class="suggestions-container"></div>
+        </div>
+        <div class="mb-3">
+            <label for="studentName" class="form-label">Student Name</label>
+            <input type="text" name="studentName" id="studentName" placeholder="Ex: John Doe" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="returnDate" class="form-label">Return Date</label>
+            <div class="input-group">
+                <input type="date" class="form-control" id="returnDate" name="returnDate" min="2025-09-01" required>
+            </div>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="hideAllPopups()">Cancel</button>
+        <button type="submit" class="btn btn-success">Assign</button>
+    </form>
+</div>
+
+<!-- Batch Add Popup -->
+<div id="batchAddPopup" class="modal-popup" style="display: none;">
+    <h5 class="mb-3">Batch Add Books</h5>
+    <form method="post" th:action="@{/batchAdd}">
+        <div class="mb-3">
+            <label for="batch-course" class="form-label">Course</label>
+            <select name="course" id="batch-course" class="form-select" required>
+                <option value="" disabled selected>Select a course</option>
+                <option value="mpm2d">MPM2D</option>
+                <option value="mbc3c">MBC3C</option>
+                <option value="mcf3m">MCF3M</option>
+                <option value="mcr3u">MCR3U</option>
+                <option value="map4c">MAP4C</option>
+                <option value="mhf4u">MHF4U</option>
+                <option value="mdm4u">MDM4U</option>
+                <option value="mcv4u">MCV4U</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="batch-condition" class="form-label">Condition</label>
+            <select name="condition" id="batch-condition" class="form-select" required>
+                <option value="" disabled selected>Select condition</option>
+                <option value="New">New</option>
+                <option value="Good">Good</option>
+                <option value="Fair">Fair</option>
+                <option value="Poor">Poor</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="batch-teacher" class="form-label">Teacher</label>
+            <input name="teacher" id="batch-teacher" class="form-control" placeholder="Ex: Doe" required />
+        </div>
+        <div class="mb-3">
+            <label for="lower" class="form-label">Textbook ID (Lower Range)</label>
+            <input name="lower" id="lower" class="form-control" placeholder="Ex: 2025-01" required />
+        </div>
+        <div class="mb-3">
+            <label for="higher" class="form-label">Textbook ID (Upper Range)</label>
+            <input name="higher" id="higher" class="form-control" placeholder="Ex: 12" required />
+        </div>
+        <div class="d-flex justify-content-between">
+            <button class="btn btn-secondary" onclick="hideAllPopups()" type="button">Cancel</button>
+            <button class="btn btn-success" type="submit">Add</button>
+        </div>
+    </form>
+</div>
+<!-- jQuery & Bootstrap JS -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.3/js/bootstrap-select.min.js"></script>
+<!-- Enhanced Live Search Script -->
+<script>
+    $(function() {
+        const textbookInput = $('#assign-textbookID');
+        const courseInput = $('#assign-course');
+        const teacherInput = $('#assign-teacher');
+        const suggestionsContainer = $('#suggestions');
+        let currentSuggestions = [];
+        let selectedIndex = -1;
+        let searchTimeout;
+
+        function updateTextbookInputState() {
+            const course = courseInput.val();
+            const teacher = teacherInput.val().trim();
+            textbookInput.prop('disabled', !(course && teacher));
+        }
+
+        function escapeHtml(text) {
+            return $('<div>').text(text).html();
+        }
+
+        function displaySuggestions(suggestions) {
+            currentSuggestions = suggestions;
+            selectedIndex = -1;
+            if (suggestions.length === 0) {
+                suggestionsContainer.html('<div class="no-results">No textbooks found</div>');
+                return;
+            }
+            let html = '<div class="suggestions-list">';
+            suggestions.forEach((suggestion, index) => {
+                html += `<div class="suggestion-item" data-index="${index}">${escapeHtml(suggestion)}</div>`;
+            });
+            html += '</div>';
+            suggestionsContainer.html(html);
+
+            $('.suggestion-item').on('click', function () {
+                const index = $(this).data('index');
+                selectSuggestion(currentSuggestions[index]);
+            });
+        }
+
+        function selectSuggestion(suggestion) {
+            textbookInput.val(suggestion);
+            suggestionsContainer.empty();
+            selectedIndex = -1;
+        }
+
+        function updateSelectedSuggestion() {
+            suggestionsContainer.find('.suggestion-item').removeClass('selected');
+            if (selectedIndex >= 0) {
+                suggestionsContainer.find('.suggestion-item').eq(selectedIndex).addClass('selected');
+            }
+        }
+
+        function searchTextbooks(query, course, teacher) {
+            $.ajax({
+                url: '/getTextbooks',
+                method: 'GET',
+                data: { q: query, course: course, teacher: teacher },
+                success: displaySuggestions,
+                error: () => {
+                    suggestionsContainer.html('<div class="no-results">Error loading suggestions</div>');
+                }
+            });
+        }
+
+        courseInput.add(teacherInput).on('change keyup input', function () {
+            updateTextbookInputState();
+            textbookInput.val('');
+            suggestionsContainer.empty();
+        });
+
+        textbookInput.on('input', function () {
+            const query = $(this).val().trim();
+            const course = courseInput.val();
+            const teacher = teacherInput.val().trim();
+
+            clearTimeout(searchTimeout);
+            if (!query || !course || !teacher) {
+                suggestionsContainer.empty();
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                searchTextbooks(query, course, teacher);
+            }, 300);
+        });
+
+        textbookInput.on('keydown', function (e) {
+            if (currentSuggestions.length === 0) return;
+
+            switch (e.keyCode) {
+                case 40: // down
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+                    updateSelectedSuggestion();
+                    break;
+                case 38: // up
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateSelectedSuggestion();
+                    break;
+                case 13: // enter
+                    e.preventDefault();
+                    if (selectedIndex >= 0) {
+                        selectSuggestion(currentSuggestions[selectedIndex]);
+                    }
+                    break;
+                case 27: // escape
+                    suggestionsContainer.empty();
+                    selectedIndex = -1;
+                    break;
+            }
+        });
+
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('#assign-textbookID, #suggestions').length) {
+                suggestionsContainer.empty();
+                selectedIndex = -1;
+            }
+        });
+
+        // Init state
+        updateTextbookInputState();
+    });
+
+    function filterBooks() {
+        const query = document.getElementById("searchInput").value.toLowerCase();
+        const rows = document.getElementById("bookTableBody").getElementsByTagName("tr");
+        for (let row of rows) {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? "" : "none";
+        }
+    }
+
+    function showPopup(id) {
+        document.getElementById("overlay").style.display = "block";
+        document.getElementById(id).style.display = "block";
+        // If opening the assign book popup manually, clear the fields
+        if (id === 'assignBookPopup') {
+            document.getElementById("assign-course").value = "";
+            document.getElementById("assign-teacher").value = "";
+            document.getElementById("assign-textbookID").value = "";
+            document.getElementById("studentName").value = "";
+            document.getElementById("returnDate").value = "";
+            document.getElementById("suggestions").innerHTML = "";
+        }
+
+    }
+
+    function hideAllPopups() {
+        document.getElementById("overlay").style.display = "none";
+        ['addBookPopup', 'assignBookPopup', 'batchAddPopup'].forEach(id => {
+            document.getElementById(id).style.display = "none";
+        });
+    }
+
+    function openEditPopup(button) {
+        const course = button.getAttribute('data-course');
+        const teacher = button.getAttribute('data-teacher');
+        const textbookID = button.getAttribute('data-textbookid');
+        const studentName = button.getAttribute('data-studentname');
+        const returnDate = button.getAttribute('data-returndate');
+
+        // Set values in the form
+        document.getElementById('assign-course').value = course;
+        document.getElementById('assign-teacher').value = teacher;
+        document.getElementById('assign-textbookID').value = textbookID;
+        document.getElementById('studentName').value = studentName;
+        document.getElementById('returnDate').value = returnDate;
+
+        // Re-enable textbookID if needed
+        document.getElementById('assign-textbookID').disabled = false;
+
+        // Show the form
+        document.getElementById('overlay').style.display = "block";
+        document.getElementById('assignBookPopup').style.display = "block";
+    }
+</script>
+</body>
+</html>

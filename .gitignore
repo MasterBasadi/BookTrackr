@@ -1,0 +1,16 @@
+cat > .gitignore << 'EOF'
+# Build output & compiled classes
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+
+# Local DB & data
+data/
+
+# Local secrets
+.env
+application-local.properties
+EOF

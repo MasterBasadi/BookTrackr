@@ -1,0 +1,49 @@
+<!-- home.html -->
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments :: head"></head>
+<body>
+<header th:replace="fragments :: header"></header>
+
+<div class="container my-5">
+  <div class="text-center mb-5">
+    <h1 class="display-4 fw-bold">Welcome to BookTrackr 📚</h1>
+    <p class="lead text-muted">Manage and track your school’s book inventory all in one place.</p>
+  </div>
+
+  <div class="row text-center mb-5">
+    <div class="col-md-4">
+      <div class="card text-white bg-info shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">📦 Total Books</h5>
+          <span th:text="${totalBooks}"></span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mt-3 mt-md-0">
+      <div class="card text-white bg-success shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">✅ Assigned Books</h5>
+          <span th:text="${assignedCount}"></span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4 mt-3 mt-md-0">
+      <div class="card text-white bg-danger shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">📚 Overdue Books</h5>
+          <span th:text="${overdueCount}"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center mt-5">
+    <blockquote class="blockquote">
+      <p class="mb-0 fst-italic">"For every minute spent in organizing, an hour is earned."</p>
+      <footer class="blockquote-footer mt-2">Benjamin Franklin</footer>
+    </blockquote>
+  </div>
+</div>
+</body>
+</html>
