@@ -5,6 +5,7 @@ import com.booktrackr.model.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,20 +28,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/signup", "/login", "/style.css", "/static/**").permitAll()
+                        .requestMatchers("/", "/login", "/signup", "/health", "/error",
+                                "/style.css", "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/signup").permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(login -> login
+                .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/login-success", true)
+                        .loginProcessingUrl("/login")
+                        .usernameParameter("username")
+                        .passwordParameter("password")
+                        .defaultSuccessUrl("/home", true)
                         .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
-                );
-
+                )
+                .csrf(csrf -> csrf.disable());
         return http.build();
     }
 
