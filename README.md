@@ -12,7 +12,7 @@ A simple, secure web app for tracking textbooks: add inventory, assign to studen
 
 ## Tech Stack
 - **Java 21**, **Spring Boot** (Web, Security)
-- **Spring Data** (JPA or Mongo—fill in your choice)
+- **Spring Data** (JPA)
 - **Thymeleaf** (server-side templates)
 - Build: **Maven**
 - Database: **PostgreSQL**
