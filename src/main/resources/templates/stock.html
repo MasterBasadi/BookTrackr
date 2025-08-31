@@ -109,8 +109,11 @@
     </form>
 
 
-    <h5 style="font-size: 20px;" class="mt-4">🔍 Search</h5>
-    <input type="text" style="font-size: 18px;" id="searchInput" class="form-control search-bar" placeholder="Type to filter..." onkeyup="filterBooks()" />
+    <h5 style="font-size: 20px;" class="mt-4">🔍 Search & Filter</h5>
+    <input type="text" style="font-size: 18px;" id="searchInput" class="form-control search-bar" placeholder="Type then Enter to filter" />
+
+    <div id="activeFilters" style="margin-top:10px;"></div>
+    <button id="clearFiltersBtn" class="btn btn-link p-0" style="display:none;">Clear all</button>
 
     <hr>
     <h5 style="font-size: 20px;" class="mt-4">📊 Inventory Summary</h5>
@@ -457,19 +460,10 @@
         updateTextbookInputState();
     });
 
-    function filterBooks() {
-        const query = document.getElementById("searchInput").value.toLowerCase();
-        const rows = document.getElementById("bookTableBody").getElementsByTagName("tr");
-        for (let row of rows) {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(query) ? "" : "none";
-        }
-    }
-
     function showPopup(id) {
         document.getElementById("overlay").style.display = "block";
         document.getElementById(id).style.display = "block";
-        // If opening the assign book popup manually, clear the fields
+
         if (id === 'assignBookPopup') {
             document.getElementById("assign-course").value = "";
             document.getElementById("assign-teacher").value = "";
@@ -495,20 +489,101 @@
         const studentName = button.getAttribute('data-studentname');
         const returnDate = button.getAttribute('data-returndate');
 
-        // Set values in the form
         document.getElementById('assign-course').value = course;
         document.getElementById('assign-teacher').value = teacher;
         document.getElementById('assign-textbookID').value = textbookID;
         document.getElementById('studentName').value = studentName;
         document.getElementById('returnDate').value = returnDate;
 
-        // Re-enable textbookID if needed
         document.getElementById('assign-textbookID').disabled = false;
 
-        // Show the form
         document.getElementById('overlay').style.display = "block";
         document.getElementById('assignBookPopup').style.display = "block";
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const activeFilters = [];
+
+        const searchInput   = document.getElementById("searchInput");
+        const chipsContainer= document.getElementById("activeFilters");
+        const clearBtn      = document.getElementById("clearFiltersBtn");
+
+        if (!searchInput || !chipsContainer) {
+            console.error("BookTrackr: Could not find search input or filters in the DOM.");
+            return;
+        }
+
+        function applyFilters() {
+            const rows = document.querySelectorAll("#bookTableBody > tr");
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                const matches = activeFilters.every(f => text.includes(f));
+                row.style.display = matches ? "" : "none";
+            });
+        }
+
+        function renderChips() {
+            chipsContainer.innerHTML = "";
+            activeFilters.forEach((f, i) => {
+                const chip = document.createElement("span");
+                chip.textContent = f;
+                chip.style.background = "#cce5ff";
+                chip.style.padding = "4px 8px";
+                chip.style.margin = "2px";
+                chip.style.borderRadius = "999px";
+                chip.style.display = "inline-flex";
+                chip.style.alignItems = "center";
+                chip.style.gap = "6px";
+                chip.style.fontSize = "14px";
+
+                const x = document.createElement("button");
+                x.type = "button";
+                x.textContent = "×";
+                x.style.border = "none";
+                x.style.background = "transparent";
+                x.style.cursor = "pointer";
+                x.style.fontSize = "16px";
+                x.addEventListener("click", () => {
+                    activeFilters.splice(i, 1);
+                    renderChips();
+                    applyFilters();
+                });
+
+                chip.appendChild(x);
+                chipsContainer.appendChild(chip);
+            });
+
+            if (clearBtn) clearBtn.style.display = activeFilters.length ? "inline" : "none";
+        }
+
+        function addFilterFromInput() {
+            const value = (searchInput.value || "").trim().toLowerCase();
+            if (!value) return;
+            if (!activeFilters.includes(value)) {
+                activeFilters.push(value);
+                renderChips();
+                applyFilters();
+            }
+            searchInput.value = "";
+        }
+
+        searchInput.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                e.preventDefault(); // don’t submit any surrounding form
+                addFilterFromInput();
+            }
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener("click", () => {
+                activeFilters.length = 0;
+                renderChips();
+                applyFilters();
+            });
+        }
+
+        window.filterBooks = function () {};
+    });
 </script>
 </body>
 </html>

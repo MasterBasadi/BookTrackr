@@ -36,5 +36,40 @@
     </span>
   </div>
 </header>
+<div th:fragment="loader">
+  <div id="loaderOverlay" style="
+       display:none; position:fixed; inset:0; background:rgba(255,255,255,.65);
+       z-index:3000;
+       display:flex; align-items:center; justify-content:flex-start; padding-left:7%;
+  ">
+    <div class="loader"></div>
+  </div>
+<script>
+  (function () {
+    const overlay = document.getElementById('loaderOverlay');
+    function show(){ overlay && (overlay.style.display = 'flex'); }
+    function hide(){ overlay && (overlay.style.display = 'none'); }
+
+    window.addEventListener('pageshow', hide);
+
+    document.addEventListener('submit', function(e){
+      const form = e.target;
+      if (form && !form.hasAttribute('data-no-loader')) show();
+    });
+
+    document.addEventListener('click', function(e){
+      const a = e.target.closest('a');
+      if (!a) return;
+      const href = a.getAttribute('href') || '';
+      if (a.hasAttribute('data-no-loader')) return;
+      if (href.startsWith('#')) return;
+      show();
+    });
+
+    window.showGlobalLoader = show;
+    window.hideGlobalLoader = hide;
+  })();
+</script>
+</div>
 </body>
 </html>
